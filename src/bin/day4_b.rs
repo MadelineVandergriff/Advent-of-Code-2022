@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let c = x.get(1).unwrap().get(0).unwrap();
             let d = x.get(1).unwrap().get(1).unwrap();
 
-            (a <= c && d <= b) || (c <= a && b <= d)
+            (b >= c && a <= d) || (d >= a && c <= a)
         })
         .filter(|x| *x)
         .count();
