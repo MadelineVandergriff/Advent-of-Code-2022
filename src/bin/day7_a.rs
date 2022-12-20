@@ -1,7 +1,9 @@
+use std::cell::RefCell;
 use std::error::Error;
-use aoc_2022::utils;
+use aoc_2022::{tree::Tree, utils};
 use crate::Node::{File, Directory};
 
+#[derive(PartialEq)]
 enum Node {
     File {
         name: String,
@@ -22,33 +24,29 @@ impl Node {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut tree = utils::Tree::<Node>::new(Directory {name: String::from("/")});
-    let mut path = vec![0];
+    let mut tree = Tree {
+        node: Directory {name: String::from("/")},
+        children: vec![]
+    };
+
+    let mut current_leaf = &mut tree;
 
     let input = utils::read_to_vec()?.leak();
     for line in input {
         match line.as_str() {
+            "$ cd .." => {
+                //current_leaf = current_leaf.parent(&tree).unwrap();
+            }
             s if {s.starts_with("$ cd")} => {
-                let name = &s[5..];
-                if name == "/" {
-                    path.clear();
-                    path.push(0usize);
-                } else if name == ".." {
-                    path.pop();
-                } else {
-                    let idx = tree
-                        .find_by(|x| x.is_named(name))
-                        .unwrap();
-                    path.push(idx);
-                }
+                let s = &s[5..];
+                current_leaf.children.push(Tree {
+                    node: Directory {name: String::from(s)},
+                    children: vec![],
+                });
             },
-            s if {s.starts_with('$')} => {},
+            "$ ls" => { continue },
             s if {s.starts_with("dir")} => {
-                let name = &s[4..];
-                tree.append(
-                    *path.last().unwrap(),
-                    Directory {name: String::from(name)}
-                ).unwrap();
+
             },
             s=> {
                 let (size, name) = s.split_once(' ').unwrap();
