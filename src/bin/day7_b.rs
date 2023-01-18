@@ -76,15 +76,17 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let _ = tree_size(tree.clone());
+    let used = tree_size(tree.clone());
+    let viable = |size: usize| used - size <= 40_000_000;
 
-    let sum: usize = tree.iter()
-        .map(|x| match &x.upgrade().unwrap().borrow().node {
-            Directory { size: Some(size), .. } if *size <= 100000 => {*size}
-            _ => 0
+    let min = tree.iter()
+        .filter_map(|x| match &x.upgrade().unwrap().borrow().node {
+            Directory { size: Some(size), .. } if viable(*size) => Some(*size),
+            _ => None
         })
-        .sum();
-    println!("{}", sum);
+        .min()
+        .unwrap();
+    println!("{}", min);
 
     Ok(())
 }
