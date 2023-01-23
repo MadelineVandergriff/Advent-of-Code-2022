@@ -15,7 +15,9 @@ use std::thread::sleep;
 use std::time::Duration;
 use crate::State::Falling;
 
-const CLEAR: &str = "\x1B[H";
+const GRAPH_FREQ: i32 = 0;
+const CLEAR: &str = "\x1B[J";
+const HOME: &str = "\x1B[H";
 
 enum State {
     Falling, Rest
@@ -28,7 +30,7 @@ fn graph(old: &HashSet<IVec2>, input: &HashSet<IVec2>, xbounds: (i32, i32), ybou
     let right = format!("{:X}", xbounds.1);
     let lr_len = max(left.len(), right.len());
 
-    write!(str, "{}", CLEAR).unwrap();
+    write!(str, "{}", HOME).unwrap();
 
     for y in 0..lr_len {
         write!(str, "      ").unwrap();
@@ -70,7 +72,7 @@ fn graph(old: &HashSet<IVec2>, input: &HashSet<IVec2>, xbounds: (i32, i32), ybou
     write!(lock, "{}", String::from_utf8(str).unwrap()).unwrap();
     lock.flush().unwrap();
     mem::forget(lock);
-    sleep(Duration::from_millis(100));
+    //sleep(Duration::from_millis(10));
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -101,26 +103,31 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .into_iter()
         }).collect::<HashSet<_>>();
 
-    let xbounds = match coords.iter().map(|coord| coord.x).minmax() {
-        MinMaxResult::MinMax(min, max) => (min, max),
+    let ybounds = match coords.iter().map(|coord| coord.y).chain([0].into_iter()).minmax() {
+        MinMaxResult::MinMax(min, max) => (min, max + 2),
         _ => panic!("No minmax found")
     };
 
-    let ybounds = match coords.iter().map(|coord| coord.y).chain([0].into_iter()).minmax() {
-        MinMaxResult::MinMax(min, max) => (min, max),
+    let xbounds = match coords.iter().map(|coord| coord.x).minmax() {
+        MinMaxResult::MinMax(min, max) => (min - ybounds.1, max + ybounds.1),
         _ => panic!("No minmax found")
     };
+
+    coords.extend(
+        (xbounds.0 ..= xbounds.1)
+            .map(|x| IVec2::new(x, ybounds.1))
+    );
 
     let old = coords.clone();
 
     let lower_bound = ybounds.1;
     let fall_directions = [IVec2::new(0, 1), IVec2::new(-1, 1), IVec2::new(1, 1)];
 
-    let idx = (0..)
-        .position(|_| {
+    println!("{}{}{}", CLEAR, HOME, CLEAR);
+    let idx = 1 + (0..) //gotta account for 0-indexing
+        .position(|idx| {
             let pos = (0..).fold_while(Ok(IVec2::new(500, 0)), |pos, _| {
                 match pos {
-                    Ok(pos) if pos.y > lower_bound => Done(Err(pos)),
                     Ok(pos) => Continue(fall_directions.iter()
                         .find(|dir| !coords.contains(&(pos + *dir)))
                         .map(|dir| pos + dir)
@@ -129,10 +136,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
             }).into_inner().unwrap_err();
             coords.insert(pos);
-            graph(&old, &coords, xbounds, ybounds);
-            pos.y > lower_bound
+            if GRAPH_FREQ >= 0 && (idx % (GRAPH_FREQ + 1)) == 0 {
+                graph(&old, &coords, xbounds, ybounds);
+            }
+            pos == IVec2::new(500 ,0)
         }).unwrap();
 
+    if GRAPH_FREQ >= 0 {
+        graph(&old, &coords, xbounds, ybounds);
+    }
     println!("{}", idx);
 
     Ok(())

@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .iter()
         .flat_map(|x|{
             if x.contains("noop") { vec![Noop] }
-            else { vec![Noop, AddX(*&x[5..].parse::<i32>().unwrap())]}
+            else { vec![Noop, AddX(x[5..].parse::<i32>().unwrap())]}
         })
         .collect();
 
